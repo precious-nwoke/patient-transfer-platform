@@ -16,6 +16,12 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          DestinationSecurityGroupId: !Ref AppSecurityGroup
+          Description: App traffic to ECS tasks only
       Tags:
         - Key: Name
           Value: SerenaALBSecurityGroup
@@ -25,24 +31,18 @@ Resources:
     Properties:
       GroupDescription: Allow app traffic from the ALB only
       VpcId: !ImportValue SerenaVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 8000
-          ToPort: 8000
-          SourceSecurityGroupId: !Ref ALBSecurityGroup
       Tags:
         - Key: Name
           Value: SerenaAppSecurityGroup
-
-  # Separate resource avoids the circular reference
-  ALBToAppEgress:
-    Type: AWS::EC2::SecurityGroupEgress
+  AppIngressFromALB:
+    Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupId: !Ref ALBSecurityGroup
+      GroupId: !Ref AppSecurityGroup
       IpProtocol: tcp
       FromPort: 8000
       ToPort: 8000
-      DestinationSecurityGroupId: !Ref AppSecurityGroup
+      SourceSecurityGroupId: !Ref ALBSecurityGroup
+      Description: App traffic from ALB only
 
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -59,11 +59,11 @@ Resources:
       GroupDescription: Allow PostgreSQL from the app and Lambda only
       VpcId: !ImportValue SerenaVPC
       SecurityGroupIngress:
-        - IpProtocol: tcp
+        - IpProtocol: tcp        #postgreSQL from ECS
           FromPort: 5432
           ToPort: 5432
           SourceSecurityGroupId: !Ref AppSecurityGroup
-        - IpProtocol: tcp
+        - IpProtocol: tcp     #postgreSQL from Lambda
           FromPort: 5432
           ToPort: 5432
           SourceSecurityGroupId: !Ref LambdaSecurityGroup
