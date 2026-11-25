@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Security groups for ALB, ECS Fargate, Lambda and Aurora PostgreSQL
+    
+Resources:
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http/https from client to the ALB
+      VpcId: !ImportValue SerenaVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: SerenaALBSecurityGroup
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow app traffic from the ALB only
+      VpcId: !ImportValue SerenaVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: SerenaAppSecurityGroup
+
+  # Separate resource avoids the circular reference
+  ALBToAppEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref ALBSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8000
+      ToPort: 8000
+      DestinationSecurityGroupId: !Ref AppSecurityGroup
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Identifies the Lambda function so the database can allow it
+      VpcId: !ImportValue SerenaVPC
+      Tags:
+        - Key: Name
+          Value: SerenaLambdaSecurityGroup
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow PostgreSQL from the app and Lambda only
+      VpcId: !ImportValue SerenaVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref AppSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Tags:
+        - Key: Name
+          Value: SerenaDBSecurityGroup
+
+Outputs:
+  outputALBSG:
+    Description: ALB security group ID
+    Value: !Ref ALBSecurityGroup
+    Export:
+      Name: SerenaALBSG
+  outputAppSG:
+    Description: App (ECS Fargate) security group ID
+    Value: !Ref AppSecurityGroup
+    Export:
+      Name: SerenaAppSG
+  outputLambdaSG:
+    Description: Lambda security group ID
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: SerenaLambdaSG
+  outputDBSG:
+    Description: Aurora security group ID
+    Value: !Ref DBSecurityGroup
+    Export:
+      Name: SerenaDBSG

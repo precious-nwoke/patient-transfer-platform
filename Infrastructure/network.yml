@@ -1,0 +1,208 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Serena VPC and Subnets
+Resources: 
+  SerenaVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: SerenaVPC
+
+  PublicSub1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      VpcId: !Ref SerenaVPC
+      CidrBlock: 10.0.1.0/24
+      Tags: 
+        - Key: Name
+          Value: SerenaPublic1
+
+  PublicSub2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      VpcId: !Ref SerenaVPC
+      CidrBlock: 10.0.2.0/24
+      Tags: 
+        - Key: Name
+          Value: SerenaPublic2
+
+  PrivAppSub1: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      VpcId: !Ref SerenaVPC
+      CidrBlock: 10.0.11.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: SerenaAppPriv1
+
+  PrivAppSub2: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      VpcId: !Ref SerenaVPC
+      CidrBlock: 10.0.12.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: SerenaAppPriv2
+  
+  PrivDataSub1: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      VpcId: !Ref SerenaVPC
+      CidrBlock: 10.0.21.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: SerenaDataPriv1
+
+  PrivDataSub2: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      VpcId: !Ref SerenaVPC
+      CidrBlock: 10.0.22.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: SerenaDataPriv2
+
+  PrivDataSub3: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      VpcId: !Ref SerenaVPC
+      CidrBlock: 10.0.23.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: SerenaDataPriv3
+
+  SerenaIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: SerenaIGW
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref SerenaVPC
+      InternetGatewayId: !Ref SerenaIGW
+
+  SerenaRTPub:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref SerenaVPC
+      Tags:
+        - Key: Name
+          Value: SerenaPublicRT
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref SerenaRTPub
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref SerenaIGW
+
+  SerenaRTPriv:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref SerenaVPC
+      Tags:
+        - Key: Name
+          Value: SerenaPrivateRT
+
+  PublicSub1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSub1
+      RouteTableId: !Ref SerenaRTPub
+  
+  PublicSub2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSub2
+      RouteTableId: !Ref SerenaRTPub
+  
+  PrivAppSub1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivAppSub1
+      RouteTableId: !Ref SerenaRTPriv
+
+  PrivAppSub2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivAppSub2
+      RouteTableId: !Ref SerenaRTPriv
+
+  PrivDataSub1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivDataSub1 
+      RouteTableId: !Ref SerenaRTPriv
+
+  PrivDataSub2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivDataSub2
+      RouteTableId: !Ref SerenaRTPriv
+  
+  PrivDataSub3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivDataSub3
+      RouteTableId: !Ref SerenaRTPriv
+
+Outputs:
+    outputVPC:
+      Description: Serena VPC ID
+      Value: !Ref SerenaVPC
+      Export:
+        Name: SerenaVPC
+    outputPublicSub1:
+      Description: Serena Public Subnet 1 ID
+      Value: !Ref PublicSub1
+      Export:
+        Name: SerenaPublicSub1
+    outputPublicSub2:
+      Description: Serena Public Subnet 2 ID
+      Value: !Ref PublicSub2
+      Export:
+        Name: SerenaPublicSub2
+    outputPrivAppSub1:  
+      Description: Serena Private App Subnet 1 ID
+      Value: !Ref PrivAppSub1
+      Export:
+        Name: SerenaPrivAppSub1
+    outputPrivAppSub2:
+      Description: Serena Private App Subnet 2 ID
+      Value: !Ref PrivAppSub2
+      Export:
+        Name: SerenaPrivAppSub2
+    outputPrivDataSub1:
+      Description: Serena Private Data Subnet 1 ID
+      Value: !Ref PrivDataSub1
+      Export:
+        Name: SerenaPrivDataSub1
+    outputPrivDataSub2:
+      Description: Serena Private Data Subnet 2 ID
+      Value: !Ref PrivDataSub2
+      Export:
+        Name: SerenaPrivDataSub2
+    outputPrivDataSub3:
+      Description: Serena Private Data Subnet 3 ID
+      Value: !Ref PrivDataSub3
+      Export:
+        Name: SerenaPrivDataSub3
